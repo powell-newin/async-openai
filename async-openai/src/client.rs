@@ -530,6 +530,9 @@ where
         while let Some(ev) = event_source.next().await {
             match ev {
                 Err(e) => {
+                    if let reqwest_eventsource::Error::StreamEnded = e {
+                        break;
+                    }
                     if let Err(_e) = tx.send(Err(OpenAIError::StreamError(e.to_string()))) {
                         // rx dropped
                         break;

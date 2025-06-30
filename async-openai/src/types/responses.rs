@@ -1,12 +1,13 @@
-use crate::error::OpenAIError;
+use crate::error::{map_deserialization_error, ApiError, OpenAIError};
 pub use crate::types::{
     CompletionTokensDetails, ImageDetail, PromptTokensDetails, ReasoningEffort,
     ResponseFormatJsonSchema,
 };
 use derive_builder::Builder;
+use futures::Stream;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::{collections::HashMap, pin::Pin};
 
 /// Role of messages in the API.
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
@@ -1433,4 +1434,1048 @@ pub enum Status {
     Failed,
     InProgress,
     Incomplete,
+}
+
+pub type ResponseStream =
+    Pin<Box<dyn Stream<Item = Result<ResponseStreamEvent, OpenAIError>> + Send>>;
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "event", content = "data")]
+#[non_exhaustive]
+#[allow(clippy::large_enum_variant)]
+pub enum ResponseStreamEvent {
+    #[serde(rename = "response.created")]
+    ResponseCreated(ResponseCreated),
+    #[serde(rename = "response.in_progress")]
+    ResponseInProgress(ResponseInProgress),
+    #[serde(rename = "response.completed")]
+    ResponseCompleted(ResponseCompleted),
+    #[serde(rename = "response.failed")]
+    ResponseFailed(ResponseFailed),
+    #[serde(rename = "response.incomplete")]
+    ResponseIncomplete(ResponseIncomplete),
+    #[serde(rename = "response.output_item.added")]
+    ResponseOutputItemAdded(ResponseOutputItemAdded),
+    #[serde(rename = "response.output_item.done")]
+    ResponseOutputItemDone(ResponseOutputItemDone),
+    #[serde(rename = "response.content_part.added")]
+    ResponseContentPartAdded(ResponseContentPartAdded),
+    #[serde(rename = "response.content_part.done")]
+    ResponseContentPartDone(ResponseContentPartDone),
+    #[serde(rename = "response.output_text.delta")]
+    ResponseOutputTextDelta(ResponseOutputTextDelta),
+    #[serde(rename = "response.output_text.done")]
+    ResponseOutputTextDone(ResponseOutputTextDone),
+    #[serde(rename = "response.refusal.delta")]
+    ResponseRefusalDelta(ResponseRefusalDelta),
+    #[serde(rename = "response.refusal.done")]
+    ResponseRefusalDone(ResponseRefusalDone),
+    #[serde(rename = "response.function_call_arguments.delta")]
+    ResponseFunctionCallArgumentsDelta(ResponseFunctionCallArgumentsDelta),
+    #[serde(rename = "response.function_call_arguments.done")]
+    ResponseFunctionCallArgumentsDone(ResponseFunctionCallArgumentsDone),
+    #[serde(rename = "response.file_search_call.in_progress")]
+    ResponseFileSearchCallInProgress(ResponseFileSearchCallInProgress),
+    #[serde(rename = "response.file_search_call.searching")]
+    ResponseFileSearchCallSearching(ResponseFileSearchCallSearching),
+    #[serde(rename = "response.file_search_call.completed")]
+    ResponseFileSearchCallCompleted(ResponseFileSearchCallCompleted),
+    #[serde(rename = "response.web_search_call.in_progress")]
+    ResponseWebSearchCallInProgress(ResponseWebSearchCallInProgress),
+    #[serde(rename = "response.web_search_call.searching")]
+    ResponseWebSearchCallSearching(ResponseWebSearchCallSearching),
+    #[serde(rename = "response.web_search_call.completed")]
+    ResponseWebSearchCallCompleted(ResponseWebSearchCallCompleted),
+    #[serde(rename = "response.reasoning_summary_part.added")]
+    ResponseReasoningSummaryPartAdded(ResponseReasoningSummaryPartAdded),
+    #[serde(rename = "response.reasoning_summary_part.done")]
+    ResponseReasoningSummaryPartDone(ResponseReasoningSummaryPartDone),
+    #[serde(rename = "response.image_generation_call.completed")]
+    ResponseImageGenerationCallCompleted(ResponseImageGenerationCallCompleted),
+    #[serde(rename = "response.image_generation_call.generating")]
+    ResponseImageGenerationCallGenerating(ResponseImageGenerationCallGenerating),
+    #[serde(rename = "response.image_generation_call.in_progress")]
+    ResponseImageGenerationCallInProgress(ResponseImageGenerationCallInProgress),
+    #[serde(rename = "response.image_generation_call.partial_image")]
+    ResponseImageGenerationCallPartialImage(ResponseImageGenerationCallPartialImage),
+    #[serde(rename = "response.mcp_call_arguments.delta")]
+    ResponseMcpCallArgumentsDelta(ResponseMcpCallArgumentsDelta),
+    #[serde(rename = "response.mcp_call_arguments.done")]
+    ResponseMcpCallArgumentsDone(ResponseMcpCallArgumentsDone),
+    #[serde(rename = "response.mcp_call.completed")]
+    ResponseMcpCallCompleted(ResponseMcpCallCompleted),
+    #[serde(rename = "response.mcp_call.failed")]
+    ResponseMcpCallFailed(ResponseMcpCallFailed),
+    #[serde(rename = "response.mcp_call.in_progress")]
+    ResponseMcpCallInProgress(ResponseMcpCallInProgress),
+    #[serde(rename = "response.mcp_list_tools.completed")]
+    ResponseMcpListToolsCompleted(ResponseMcpListToolsCompleted),
+    #[serde(rename = "response.mcp_list_tools.failed")]
+    ResponseMcpListToolsFailed(ResponseMcpListToolsFailed),
+    #[serde(rename = "response.mcp_list_tools.in_progress")]
+    ResponseMcpListToolsInProgress(ResponseMcpListToolsInProgress),
+    #[serde(rename = "response.code_interpreter_call.in_progress")]
+    ResponseCodeInterpreterCallInProgress(ResponseCodeInterpreterCallInProgress),
+    #[serde(rename = "response.code_interpreter_call.interpreting")]
+    ResponseCodeInterpreterCallInterpreting(ResponseCodeInterpreterCallInterpreting),
+    #[serde(rename = "response.code_interpreter_call.completed")]
+    ResponseCodeInterpreterCallCompleted(ResponseCodeInterpreterCallCompleted),
+    #[serde(rename = "response.code_interpreter_call_code.delta")]
+    ResponseCodeInterpreterCallCodeDelta(ResponseCodeInterpreterCallCodeDelta),
+    #[serde(rename = "response.code_interpreter_call_code.done")]
+    ResponseCodeInterpreterCallCodeDone(ResponseCodeInterpreterCallCodeDone),
+    #[serde(rename = "response.output_text.annotation.added")]
+    ResponseOutputTextAnnotationAdded(ResponseOutputTextAnnotationAdded),
+    #[serde(rename = "response.queued")]
+    ResponseQueued(ResponseQueued),
+    #[serde(rename = "response.reasoning.delta")]
+    ResponseReasoningDelta(ResponseReasoningDelta),
+    #[serde(rename = "response.reasoning.done")]
+    ResponseReasoningDone(ResponseReasoningDone),
+    #[serde(rename = "response.reasoning_summary.delta")]
+    ResponseReasoningSummaryDelta(ResponseReasoningSummaryDelta),
+    #[serde(rename = "response.reasoning_summary.done")]
+    ResponseReasoningSummaryDone(ResponseReasoningSummaryDone),
+    #[serde(rename = "error")]
+    ResponseError(ResponseError),
+}
+
+impl TryFrom<eventsource_stream::Event> for ResponseStreamEvent {
+    type Error = OpenAIError;
+    fn try_from(value: eventsource_stream::Event) -> Result<Self, Self::Error> {
+        match value.event.as_str() {
+            "response.created" => serde_json::from_str::<ResponseCreated>(value.data.as_str())
+                .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                .map(ResponseStreamEvent::ResponseCreated),
+
+            "response.in_progress" => {
+                serde_json::from_str::<ResponseInProgress>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseInProgress)
+            }
+
+            "response.completed" => serde_json::from_str::<ResponseCompleted>(value.data.as_str())
+                .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                .map(ResponseStreamEvent::ResponseCompleted),
+
+            "response.failed" => serde_json::from_str::<ResponseFailed>(value.data.as_str())
+                .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                .map(ResponseStreamEvent::ResponseFailed),
+
+            "response.incomplete" => {
+                serde_json::from_str::<ResponseIncomplete>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseIncomplete)
+            }
+
+            "response.output_item.added" => {
+                serde_json::from_str::<ResponseOutputItemAdded>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseOutputItemAdded)
+            }
+
+            "response.output_item.done" => {
+                serde_json::from_str::<ResponseOutputItemDone>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseOutputItemDone)
+            }
+
+            "response.content_part.added" => {
+                serde_json::from_str::<ResponseContentPartAdded>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseContentPartAdded)
+            }
+
+            "response.content_part.done" => {
+                serde_json::from_str::<ResponseContentPartDone>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseContentPartDone)
+            }
+
+            "response.output_text.delta" => {
+                serde_json::from_str::<ResponseOutputTextDelta>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseOutputTextDelta)
+            }
+
+            "response.output_text.done" => {
+                serde_json::from_str::<ResponseOutputTextDone>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseOutputTextDone)
+            }
+
+            "response.refusal.delta" => {
+                serde_json::from_str::<ResponseRefusalDelta>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseRefusalDelta)
+            }
+
+            "response.refusal.done" => {
+                serde_json::from_str::<ResponseRefusalDone>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseRefusalDone)
+            }
+
+            "response.function_call_arguments.delta" => {
+                serde_json::from_str::<ResponseFunctionCallArgumentsDelta>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseFunctionCallArgumentsDelta)
+            }
+
+            "response.function_call_arguments.done" => {
+                serde_json::from_str::<ResponseFunctionCallArgumentsDone>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseFunctionCallArgumentsDone)
+            }
+
+            "response.file_search_call.in_progress" => {
+                serde_json::from_str::<ResponseFileSearchCallInProgress>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseFileSearchCallInProgress)
+            }
+
+            "response.file_search_call.searching" => {
+                serde_json::from_str::<ResponseFileSearchCallSearching>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseFileSearchCallSearching)
+            }
+
+            "response.file_search_call.completed" => {
+                serde_json::from_str::<ResponseFileSearchCallCompleted>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseFileSearchCallCompleted)
+            }
+
+            "response.web_search_call.in_progress" => {
+                serde_json::from_str::<ResponseWebSearchCallInProgress>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseWebSearchCallInProgress)
+            }
+
+            "response.web_search_call.searching" => {
+                serde_json::from_str::<ResponseWebSearchCallSearching>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseWebSearchCallSearching)
+            }
+
+            "response.web_search_call.completed" => {
+                serde_json::from_str::<ResponseWebSearchCallCompleted>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseWebSearchCallCompleted)
+            }
+
+            "response.reasoning_summary_part.added" => {
+                serde_json::from_str::<ResponseReasoningSummaryPartAdded>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseReasoningSummaryPartAdded)
+            }
+
+            "response.reasoning_summary_part.done" => {
+                serde_json::from_str::<ResponseReasoningSummaryPartDone>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseReasoningSummaryPartDone)
+            }
+
+            "response.image_generation_call.completed" => {
+                serde_json::from_str::<ResponseImageGenerationCallCompleted>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseImageGenerationCallCompleted)
+            }
+
+            "response.image_generation_call.generating" => {
+                serde_json::from_str::<ResponseImageGenerationCallGenerating>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseImageGenerationCallGenerating)
+            }
+
+            "response.image_generation_call.in_progress" => {
+                serde_json::from_str::<ResponseImageGenerationCallInProgress>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseImageGenerationCallInProgress)
+            }
+
+            "response.image_generation_call.partial_image" => {
+                serde_json::from_str::<ResponseImageGenerationCallPartialImage>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseImageGenerationCallPartialImage)
+            }
+
+            "response.mcp_call_arguments.delta" => {
+                serde_json::from_str::<ResponseMcpCallArgumentsDelta>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseMcpCallArgumentsDelta)
+            }
+
+            "response.mcp_call_arguments.done" => {
+                serde_json::from_str::<ResponseMcpCallArgumentsDone>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseMcpCallArgumentsDone)
+            }
+
+            "response.mcp_call.completed" => {
+                serde_json::from_str::<ResponseMcpCallCompleted>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseMcpCallCompleted)
+            }
+
+            "response.mcp_call.failed" => {
+                serde_json::from_str::<ResponseMcpCallFailed>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseMcpCallFailed)
+            }
+
+            "response.mcp_call.in_progress" => {
+                serde_json::from_str::<ResponseMcpCallInProgress>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseMcpCallInProgress)
+            }
+
+            "response.mcp_list_tools.completed" => {
+                serde_json::from_str::<ResponseMcpListToolsCompleted>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseMcpListToolsCompleted)
+            }
+
+            "response.mcp_list_tools.failed" => {
+                serde_json::from_str::<ResponseMcpListToolsFailed>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseMcpListToolsFailed)
+            }
+
+            "response.mcp_list_tools.in_progress" => {
+                serde_json::from_str::<ResponseMcpListToolsInProgress>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseMcpListToolsInProgress)
+            }
+
+            "response.code_interpreter_call.in_progress" => {
+                serde_json::from_str::<ResponseCodeInterpreterCallInProgress>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseCodeInterpreterCallInProgress)
+            }
+
+            "response.code_interpreter_call.interpreting" => {
+                serde_json::from_str::<ResponseCodeInterpreterCallInterpreting>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseCodeInterpreterCallInterpreting)
+            }
+
+            "response.code_interpreter_call.completed" => {
+                serde_json::from_str::<ResponseCodeInterpreterCallCompleted>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseCodeInterpreterCallCompleted)
+            }
+
+            "response.code_interpreter_call_code.delta" => {
+                serde_json::from_str::<ResponseCodeInterpreterCallCodeDelta>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseCodeInterpreterCallCodeDelta)
+            }
+
+            "response.code_interpreter_call_code.done" => {
+                serde_json::from_str::<ResponseCodeInterpreterCallCodeDone>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseCodeInterpreterCallCodeDone)
+            }
+
+            "response.output_text.annotation.added" => {
+                serde_json::from_str::<ResponseOutputTextAnnotationAdded>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseOutputTextAnnotationAdded)
+            }
+
+            "response.queued" => serde_json::from_str::<ResponseQueued>(value.data.as_str())
+                .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                .map(ResponseStreamEvent::ResponseQueued),
+
+            "response.reasoning.delta" => {
+                serde_json::from_str::<ResponseReasoningDelta>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseReasoningDelta)
+            }
+
+            "response.reasoning.done" => {
+                serde_json::from_str::<ResponseReasoningDone>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseReasoningDone)
+            }
+
+            "response.reasoning_summary.delta" => {
+                serde_json::from_str::<ResponseReasoningSummaryDelta>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseReasoningSummaryDelta)
+            }
+
+            "response.reasoning_summary.done" => {
+                serde_json::from_str::<ResponseReasoningSummaryDone>(value.data.as_str())
+                    .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                    .map(ResponseStreamEvent::ResponseReasoningSummaryDone)
+            }
+
+            "error" => serde_json::from_str::<ResponseError>(value.data.as_str())
+                .map_err(|e| map_deserialization_error(e, value.data.as_bytes()))
+                .map(ResponseStreamEvent::ResponseError),
+
+            _ => Err(OpenAIError::StreamError(format!(
+                "Unrecognized event: {value:?}"
+            ))),
+        }
+    }
+}
+
+/// An event that is emitted when a response is created.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseCreated {
+    /// The response that was created.
+    pub response: Response,
+    /// The type of the event. Always `response.created`.
+    pub r#type: String,
+    /// The sequence number for this event.
+    pub sequence_number: i32,
+}
+
+/// Emitted when the response is in progress.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseInProgress {
+    /// The response that is in progress.
+    pub response: Response,
+    /// The sequence number for this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.in_progress`.
+    pub r#type: String,
+}
+
+/// Emitted when the model response is complete.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseCompleted {
+    /// Properties of the completed response.
+    pub response: Response,
+    /// The sequence number for this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.completed`.
+    pub r#type: String,
+}
+
+/// An event that is emitted when a response fails.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseFailed {
+    /// The response that failed.
+    pub response: Response,
+    /// The sequence number for this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.failed`.
+    pub r#type: String,
+}
+
+/// An event that is emitted when a response finishes as incomplete.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseIncomplete {
+    /// The response that failed.
+    pub response: Response,
+    /// The sequence number for this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.incomplete`.
+    pub r#type: String,
+}
+
+/// Emitted when a new output item is added.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseOutputItemAdded {
+    /// The output item that was added.
+    pub item: OutputContent,
+    /// The index of the output item that was added.
+    pub output_index: i32,
+    /// The sequence number for this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.output_item.added`.
+    pub r#type: String,
+}
+
+/// Emitted when an output item is marked done.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseOutputItemDone {
+    /// The output item that was marked done.
+    pub item: OutputContent,
+    /// The index of the output item that was marked done.
+    pub output_index: i32,
+    /// The sequence number for this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.output_item.done`.
+    pub r#type: String,
+}
+
+/// Emitted when a new content part is added.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseContentPartAdded {
+    /// The index of the content part that was added.
+    pub content_index: i32,
+    /// The ID of the output item that the content part was added to.
+    pub item_id: String,
+    /// The index of the output item that the content part was added to.
+    pub output_index: i32,
+    /// The content part that was added.
+    pub part: Content,
+    /// The sequence number for this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.content_part.added`.
+    pub r#type: String,
+}
+
+/// Emitted when a content part is done.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseContentPartDone {
+    /// The index of the content part that is done.
+    pub content_index: i32,
+    /// The ID of the output item that the content part was added to.
+    pub item_id: String,
+    /// The index of the output item that the content part was added to.
+    pub output_index: i32,
+    /// The content part that is done.
+    pub part: Content,
+    /// The sequence number for this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.content_part.done`.
+    pub r#type: String,
+}
+
+/// Emitted when there is an additional text delta.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseOutputTextDelta {
+    /// The index of the content part that the text delta was added to.
+    pub content_index: i32,
+    /// The text delta that was added.
+    pub delta: String,
+    /// The ID of the output item that the text delta was added to.
+    pub item_id: String,
+    /// The index of the output item that the content part was added to.
+    pub output_index: i32,
+    /// The sequence number for this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.output_text.delta`.
+    pub r#type: String,
+}
+
+/// Emitted when text content is finalized.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseOutputTextDone {
+    /// The index of the content part that the text content is finalized.
+    pub content_index: i32,
+    /// The ID of the output item that the text content is finalized.
+    pub item_id: String,
+    /// The index of the output item that the text content is finalized.
+    pub output_index: i32,
+    /// The sequence number for this event.
+    pub sequence_number: i32,
+    /// The text content that is finalized.
+    pub text: String,
+    /// The type of the event. Always `response.output_text.delta`.
+    pub r#type: String,
+}
+
+/// Emitted when there is a partial refusal text.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseRefusalDelta {
+    /// The index of the content part that the refusal text is added to.
+    pub content_index: i32,
+    /// The refusal text that is added.
+    pub delta: String,
+    /// The ID of the output item that the refusal text is added to.
+    pub item_id: String,
+    /// The index of the output item that the refusal text is added to.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.refusal.delta`.
+    pub r#type: String,
+}
+
+/// Emitted when refusal text is finalized.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseRefusalDone {
+    /// The index of the content part that the refusal text is finalized.
+    pub content_index: i32,
+    /// The ID of the output item that the refusal text is finalized.
+    pub item_id: String,
+    /// The index of the output item that the refusal text is finalized.
+    pub output_index: i32,
+    /// The refusal text that is finalized.
+    pub refusal: String,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.refusal.done`.
+    pub r#type: String,
+}
+
+/// Emitted when there is a partial function-call arguments delta.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseFunctionCallArgumentsDelta {
+    /// The function-call arguments delta that is added.
+    pub delta: String,
+    /// The ID of the output item that the function-call arguments delta is added to.
+    pub item_id: String,
+    /// The index of the output item that the function-call arguments delta is added to.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.function_call_arguments.delta`.
+    pub r#type: String,
+}
+
+/// Emitted when function-call arguments are finalized.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseFunctionCallArgumentsDone {
+    /// The function-call arguments.
+    pub arguments: String,
+    /// The ID of the item.
+    pub item_id: String,
+    /// The index of the output item.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.function_call_arguments.done`.
+    pub r#type: String,
+}
+
+/// Emitted when a file search call is initiated.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseFileSearchCallInProgress {
+    /// The ID of the output item that the file search call is initiated.
+    pub item_id: String,
+    /// The index of the output item that the file search call is initiated.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.file_search_call.in_progress`.
+    pub r#type: String,
+}
+
+/// Emitted when a file search is currently searching.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseFileSearchCallSearching {
+    /// The ID of the output item that the file search call is initiated.
+    pub item_id: String,
+    /// The index of the output item that the file search call is initiated.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.file_search_call.searching`.
+    pub r#type: String,
+}
+
+/// Emitted when a file search call is completed (results found).
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseFileSearchCallCompleted {
+    /// The ID of the output item that the file search call is initiated.
+    pub item_id: String,
+    /// The index of the output item that the file search call is initiated.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.file_search_call.completed`.
+    pub r#type: String,
+}
+
+/// Emitted when a web search call is initiated.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseWebSearchCallInProgress {
+    /// The ID of the output item that the web search call is initiated.
+    pub item_id: String,
+    ///The index of the output item that the web search call is associated with.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.web_search_call.in_progress`.
+    pub r#type: String,
+}
+
+/// Emitted when a web search is currently searching.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseWebSearchCallSearching {
+    /// The ID of the output item that the web search call is initiated.
+    pub item_id: String,
+    /// The index of the output item that the web search call is associated with.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.web_search_call.searching`.
+    pub r#type: String,
+}
+
+/// Emitted when a web search call is completed.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseWebSearchCallCompleted {
+    /// The ID of the output item that the web search call is initiated.
+    pub item_id: String,
+    /// The index of the output item that the web search call is associated with.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.web_search_call.completed`.
+    pub r#type: String,
+}
+
+/// Emitted when a new reasoning summary part is added.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseReasoningSummaryPartAdded {
+    /// The ID of the item this summary part is associated with.
+    pub item_id: String,
+    /// The index of the output item this summary part is associated with.
+    pub output_index: i32,
+    /// The summary part that was added.
+    pub part: SummaryPart,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.reasoning_summary_part.added`.
+    pub r#type: String,
+}
+
+/// Emitted when a reasoning summary part is completed.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseReasoningSummaryPartDone {
+    /// The ID of the item this summary part is associated with.
+    pub item_id: String,
+    /// The index of the output item this summary part is associated with.
+    pub output_index: i32,
+    /// The completed summary part.
+    pub part: SummaryPart,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.reasoning_summary_part.done`.
+    pub r#type: String,
+}
+
+/// A summary part.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct SummaryPart {
+    /// The text of the summary part.
+    pub text: String,
+    /// The type of the summary part. Always `summary_text`.
+    pub r#type: String,
+}
+
+/// Emitted when an image generation tool call has completed and the final image is available.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseImageGenerationCallCompleted {
+    /// The unique identifier of the image generation item being processed.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.image_generation_call.completed`.
+    pub r#type: String,
+}
+
+/// Emitted when an image generation tool call is actively generating an image (intermediate state).
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseImageGenerationCallGenerating {
+    /// The unique identifier of the image generation item being processed.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.image_generation_call.generating`.
+    pub r#type: String,
+}
+
+/// Emitted when an image generation tool call is in progress.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseImageGenerationCallInProgress {
+    /// The unique identifier of the image generation item being processed.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.image_generation_call.in_progress`.
+    pub r#type: String,
+}
+
+/// Emitted when an image generation tool call is in progress.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseImageGenerationCallPartialImage {
+    /// The unique identifier of the image generation item being processed.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// Base64-encoded partial image data, suitable for rendering as an image.
+    pub partial_image_b64: String,
+    /// 0-based index for the partial image (backend is 1-based, but this is 0-based for the user).
+    pub partial_image_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.image_generation_call.partial_image`.
+    pub r#type: String,
+}
+
+/// Emitted when there is a delta (partial update) to the arguments of an MCP tool call.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseMcpCallArgumentsDelta {
+    /// The partial update to the arguments for the MCP tool call.
+    pub delta: Value,
+    /// The unique identifier of the MCP tool call item being processed.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.mcp_call_arguments_delta'`.
+    pub r#type: String,
+}
+
+/// Emitted when the arguments for an MCP tool call are finalized.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseMcpCallArgumentsDone {
+    /// The finalized arguments for the MCP tool call.
+    pub arguments: Value,
+    /// The unique identifier of the MCP tool call item being processed.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.mcp_call_arguments.done'`.
+    pub r#type: String,
+}
+
+/// Emitted when an MCP tool call has completed successfully.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseMcpCallCompleted {
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.mcp_call.completed'`.
+    pub r#type: String,
+}
+
+/// Emitted when an MCP tool call has failed.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseMcpCallFailed {
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.mcp_call.failed`
+    pub r#type: String,
+}
+
+/// Emitted when an MCP tool call is in progress.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseMcpCallInProgress {
+    /// The unique identifier of the MCP tool call item being processed.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.mcp_call.in_progress`
+    pub r#type: String,
+}
+
+/// Emitted when the list of available MCP tools has been successfully retrieved.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseMcpListToolsCompleted {
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.mcp_list_tools.completed`
+    pub r#type: String,
+}
+
+/// Emitted when the attempt to list available MCP tools has failed.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseMcpListToolsFailed {
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.mcp_list_tools.failed`
+    pub r#type: String,
+}
+
+/// Emitted when the system is in the process of retrieving the list of available MCP tools.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseMcpListToolsInProgress {
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.mcp_list_tools.in_progress`
+    pub r#type: String,
+}
+
+/// Emitted when a code interpreter call is in progress.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseCodeInterpreterCallInProgress {
+    /// The unique identifier of the code interpreter tool call item.
+    pub item_id: String,
+    /// The index of the output item in the response for which the code interpreter call is in progress.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.code_interpreter_call.in_progress`
+    pub r#type: String,
+}
+
+/// Emitted when the code interpreter is actively interpreting the code snippet.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseCodeInterpreterCallInterpreting {
+    /// The unique identifier of the code interpreter tool call item.
+    pub item_id: String,
+    /// The index of the output item in the response for which the code interpreter is interpreting code.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.code_interpreter_call.interpreting`
+    pub r#type: String,
+}
+
+/// Emitted when the code interpreter call is completed.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseCodeInterpreterCallCompleted {
+    /// The unique identifier of the code interpreter tool call item.
+    pub item_id: String,
+    /// The index of the output item in the response for which the code interpreter call is completed.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.code_interpreter_call.completed`
+    pub r#type: String,
+}
+
+/// Emitted when a partial code snippet is streamed by the code interpreter.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseCodeInterpreterCallCodeDelta {
+    /// The partial code snippet being streamed by the code interpreter.
+    pub delta: String,
+    /// The unique identifier of the code interpreter tool call item.
+    pub item_id: String,
+    /// The index of the output item in the response for which the code is being streamed.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.code_interpreter_call_code.delta`
+    pub r#type: String,
+}
+
+/// Emitted when the code snippet is finalized by the code interpreter.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseCodeInterpreterCallCodeDone {
+    /// The partial code snippet being streamed by the code interpreter.
+    pub code: String,
+    /// The unique identifier of the code interpreter tool call item.
+    pub item_id: String,
+    /// The index of the output item in the response for which the code is finalized.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.code_interpreter_call_code.done`
+    pub r#type: String,
+}
+
+/// Emitted when an annotation is added to output text content.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseOutputTextAnnotationAdded {
+    /// The annotation object being added. (See annotation schema for details.)
+    pub annotation: Annotation,
+    /// The index of the annotation within the content part.
+    pub annotation_index: i32,
+    /// The index of the content part within the output item.
+    pub content_index: i32,
+    /// The unique identifier of the item to which the annotation is being added.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.output_text.annotation.added`.
+    pub r#type: String,
+}
+
+/// Emitted when a response is queued and waiting to be processed.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseQueued {
+    /// The full response object that is queued.
+    pub response: Response,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.queued`.
+    pub r#type: String,
+}
+
+/// Emitted when there is a delta (partial update) to the reasoning content.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseReasoningDelta {
+    /// The index of the reasoning content part within the output item.
+    pub content_index: i32,
+    /// The partial update to the reasoning content.
+    pub delta: ReasoningContentDelta,
+    /// The unique identifier of the item for which reasoning is being updated.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `response.reasoning.delta`.
+    pub r#type: String,
+}
+
+/// The partial update to the reasoning content.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ReasoningContentDelta {
+    pub text: String,
+}
+
+/// Emitted when the reasoning content is finalized for an item.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseReasoningDone {
+    /// The index of the reasoning content part within the output item.
+    pub content_index: i32,
+    /// The unique identifier of the item for which reasoning is finalized.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The finalized reasoning text.
+    pub text: String,
+    /// The type of the event. Always `response.reasoning.done`.
+    pub r#type: String,
+}
+
+/// Emitted when there is a delta (partial update) to the reasoning summary content.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseReasoningSummaryDelta {
+    /// The partial update to the reasoning summary content.
+    pub delta: ReasoningContentDelta,
+    /// The unique identifier of the item for which the reasoning summary is being updated.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The index of the summary part within the output item.
+    pub summary_index: i32,
+    /// The type of the event. Always `response.reasoning_summary.delta`.
+    pub r#type: String,
+}
+
+/// Emitted when the reasoning summary content is finalized for an item.
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+pub struct ResponseReasoningSummaryDone {
+    /// The unique identifier of the item for which the reasoning summary is finalized.
+    pub item_id: String,
+    /// The index of the output item in the response's output array.
+    pub output_index: i32,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The index of the summary part within the output item.
+    pub summary_index: i32,
+    /// The finalized reasoning summary text.
+    pub text: String,
+    /// The type of the event. Always `response.reasoning_summary.done`.
+    pub r#type: String,
+}
+
+/// Emitted when an error occurs.
+#[derive(Clone, Serialize, Debug, Deserialize)]
+pub struct ResponseError {
+    pub error: ApiError,
+    /// The sequence number of this event.
+    pub sequence_number: i32,
+    /// The type of the event. Always `error`.
+    pub r#type: String,
 }
