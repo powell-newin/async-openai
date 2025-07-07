@@ -93,7 +93,14 @@ pub enum ContentType {
     InputFile(InputFile),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default, Builder)]
+#[builder(
+    name = "InputTextArgs",
+    pattern = "mutable",
+    setter(into, strip_option),
+    default
+)]
+#[builder(build_fn(error = "OpenAIError"))]
 pub struct InputText {
     text: String,
 }
