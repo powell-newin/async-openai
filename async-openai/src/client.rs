@@ -4,7 +4,7 @@ use bytes::Bytes;
 use futures::{stream::StreamExt, Stream};
 use reqwest::multipart::Form;
 use reqwest_eventsource::{Event, EventSource, RequestBuilderExt};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     config::{Config, OpenAIConfig},
@@ -533,7 +533,17 @@ where
                     if let reqwest_eventsource::Error::StreamEnded = e {
                         break;
                     }
-                    if let Err(_e) = tx.send(Err(OpenAIError::StreamError(e.to_string()))) {
+                    let mut error = OpenAIError::StreamError(e.to_string());
+                    if let reqwest_eventsource::Error::InvalidStatusCode(_status, response) = e {
+                        if let Ok(api_error) = response.text().await {
+                            if let Ok(wrapped_error) =
+                                serde_json::from_str::<WrappedError>(&api_error)
+                            {
+                                error = OpenAIError::ApiError(wrapped_error.error);
+                            }
+                        }
+                    }
+                    if let Err(_e) = tx.send(Err(error)) {
                         // rx dropped
                         break;
                     }
