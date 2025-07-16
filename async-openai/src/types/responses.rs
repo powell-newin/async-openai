@@ -1027,6 +1027,45 @@ pub struct WebSearchCallOutput {
     pub id: String,
     /// The status of the web search tool call.
     pub status: String,
+    /// An object describing the specific action taken in this web search call. Includes details on how the model used the web (search, open_page, find).
+    pub action: WebSearchCallAction,
+}
+
+/// Represents all user‐triggered actions.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum WebSearchCallAction {
+    /// A search action.
+    Search(Search),
+
+    /// A open_page action.
+    OpenPage(OpenPage),
+
+    /// A find action.
+    Find(Find),
+}
+
+/// Action type "search" - Performs a web search query.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Search {
+    /// The search query.
+    pub query: Option<String>,
+}
+
+/// Action type "open_page" - Opens a specific URL from search results.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpenPage {
+    /// The URL opened by the model.
+    pub url: String,
+}
+
+/// Action type "find": Searches for a pattern within a loaded page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Find {
+    /// The pattern or text to search for within the page.
+    pub pattern: String,
+    /// The URL of the page searched for the pattern.
+    pub url: String,
 }
 
 /// Output from a computer tool call.
