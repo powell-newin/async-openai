@@ -267,6 +267,7 @@ pub struct VectorStoreFileBatchObject {
     /// The Unix timestamp (in seconds) for when the vector store files batch was created.
     pub created_at: u32,
     /// The ID of the [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) that the [File](https://platform.openai.com/docs/api-reference/files) is attached to.
+    #[serde(default)]
     pub vector_store_id: Option<String>,
     /// The status of the vector store files batch, which can be either `in_progress`, `completed`, `cancelled` or `failed`.
     pub status: VectorStoreFileBatchStatus,
