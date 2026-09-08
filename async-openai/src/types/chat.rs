@@ -617,13 +617,17 @@ pub enum ServiceTierResponse {
     Flex,
 }
 
-#[derive(Clone, Serialize, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Serialize, Debug, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ReasoningEffort {
+    None,
     Minimal,
     Low,
+    #[default]
     Medium,
     High,
+    Xhigh,
+    Max,
 }
 
 /// Output types that you would like the model to generate for this request.
